@@ -1,0 +1,661 @@
+substitutions:
+  modbus_id: modbus1
+
+modbus_controller:
+- id: modbus_device
+  address: 0x7f
+  modbus_id: $modbus_id
+  update_interval: 10s
+  setup_priority: -10
+  command_throttle: 500ms
+  max_cmd_retries: 2
+  on_offline:
+    then:
+      - lambda: |-
+          id(last_major_problem).custom_data[3] = 0x00;
+          id(last_major_problem).custom_data[5] = 0x02;
+          id(last_major_problem).offset = 0;
+          id(heat_cycles).custom_data[3] = 0x5e;
+          id(heat_cycles).custom_data[5] = 0x02;
+          id(heat_cycles).offset = 0;
+          id(status).publish_state("Offline");
+
+sensor:
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "NTC right raw reading"
+  disabled_by_default: True
+  register_type: read
+  unit_of_measurement: "Ω"
+  address: 0x0000
+  value_type: U_WORD
+  lambda: return x * 2100 / (4095.01 - x);
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "NTC left raw reading"
+  disabled_by_default: True
+  register_type: read
+  unit_of_measurement: "Ω"
+  address: 0x0001
+  value_type: U_WORD
+  lambda: return x * 2100 / (4095.01 - x);
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "NTC Raw Temperature"
+  disabled_by_default: True
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x0002
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Tank Temperature"
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x0003
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Ambient Temperature"
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x0004
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Temperature Control Setting"
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x0005
+  value_type: U_WORD
+  lambda: |-
+    if (x == 0.0 || x == 1.0) {
+      return NAN;
+    } else {
+      return x / 10.0;
+    }
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Solenoid Drive Voltage"
+  register_type: read
+  device_class: voltage
+  unit_of_measurement: "V"
+  accuracy_decimals: 3
+  disabled_by_default: True
+  address: 0x0009
+  value_type: U_WORD
+  filters:
+    - multiply: 0.00146627565
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Temperature Setting"
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x000a
+  value_type: U_WORD
+  lambda: |-
+    if (x == 0.0) {
+      id(pot_state).publish_state("Off");
+      return NAN;
+    } else if (x == 1.0) {
+      id(pot_state).publish_state("Pilot");
+      return NAN;
+    } else {
+      id(pot_state).publish_state("On");
+      return x / 10.0;
+    }
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Temperature Hysteresis"
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x000b
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Last Temperature Setting"
+  disabled_by_default: True
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x000c
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Last Temperature Hysteresis"
+  disabled_by_default: True
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x000d
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Maximum Setback Temperature"
+  disabled_by_default: True
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x0304
+  skip_updates: 100
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Minimum Setback Temperature"
+  disabled_by_default: True
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  address: 0x0305
+  skip_updates: 100
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Temperature Hysteresis Max"
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  disabled_by_default: True
+  address: 0x0306
+  skip_updates: 100
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Temperature Hysteresis Min"
+  register_type: read
+  device_class: temperature
+  unit_of_measurement: "°F"
+  accuracy_decimals: 1
+  disabled_by_default: True
+  address: 0x0307
+  skip_updates: 100
+  value_type: U_WORD
+  filters:
+    - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  id: heat_cycles
+  name: "Heat Cycles"
+  accuracy_decimals: 0
+  custom_command: [0x7f, 0x04, 0x04, 0x5e, 0x00, 0x02]
+  lambda: |-
+    auto &self = id(heat_cycles);
+    unsigned int short_count = 0;
+    unsigned int long_count = 0;
+    unsigned int not_ready = 0x80;
+    if (self->custom_data[5] == 0x02) {
+      // Get an uninterrupted read of the last two register pairs.
+      unsigned int last_data = self->bitmask;
+      unsigned int read_count = self->offset;
+      unsigned int new_data = data[1] | (data[0] << 8) | (data[3] << 16) | (data[2] << 24);
+      self->bitmask = new_data;
+      self->offset = 1;
+      if (!read_count || new_data != last_data)
+        return NAN;
+      long_count = ((new_data >> 16) + 1) & 0xffff;
+      if (!data[0]) {
+        short_count = 46;
+        not_ready = 0;
+      } else if (!data[1]) {
+        // All but last byte is zero
+        short_count = 45;
+        not_ready = 0;
+      } else {
+        // Need to find first zero byte
+        self->custom_data[3] = 0x48;
+      }
+      self->bitmask = (long_count << 8) | not_ready | short_count;
+      self->offset = 0;
+      self->custom_data[5] = 0x01;
+      if (not_ready)
+        return NAN;
+      else
+        return long_count * 47 + short_count;
+    }
+
+    short_count = self->bitmask & 0x7f;
+    long_count = self->bitmask >> 8;
+    not_ready = self->bitmask & 0x80;
+    // High bit indicates we are still counting zeros
+    if (not_ready) {
+      if (data[1]) {
+        // First byte in pair is 0xff
+        not_ready = 0;
+      } else if (data[0]) {
+        // Second byte in pair is 0xff
+        not_ready = 0;
+        short_count += 1;
+      } else if (short_count == 44) {
+        // All bytes in array are zero
+        not_ready = 0;
+        short_count += 2;
+      } else {
+        // Current pair is 0x00, 0x00, move to next pair
+        self->custom_data[3]++;
+        short_count += 2;
+      }
+    } else if (short_count == 46) {
+      // Array is all zero, waiting for it to be erased and filled with 0xff
+      if (data[0]) {
+        short_count = 0;
+        long_count = (long_count + 1) & 0xffff;;
+        self->custom_data[3] = 0x48; // Move to first register pair
+      }
+    } else if (!data[!(short_count & 1)]) {
+      // Waiting for short count byte to get written to zero
+      short_count += 1;
+      if (short_count != 46 && !(short_count & 1))
+        self->custom_data[3]++; // Move to next register pair
+    }
+    self->bitmask = (long_count << 8) | not_ready | short_count;
+    if (not_ready)
+      return NAN;
+    else
+      return long_count * 47 + short_count;
+
+text_sensor:
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Model"
+  custom_command: [0x7f, 0x11]
+  lambda: |-
+    if (data.size() < 1)
+      return std::string("<unknown>");
+    else
+      return std::string((const char *)data.data(), data.size() - 1);
+  skip_updates: 100
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Problem"
+  disabled_by_default: True
+  id: problem
+  register_type: read
+  address: 0x0007
+  response_size: 2
+  lambda: |-
+    static const char *problem_flag_str[16] = {
+      "Turning off", // 0, 0x0001
+      "TCO exceeded", // 1, 0x0002 Major
+      "Electronics: Memory corruption or Potentiometer failure", // 2, 0x0004 Major
+      "Electronics: Solenoid voltage discharge", // 3, 0x0008 Major
+      "Electronics: Solenoid voltage drive", // 4, 0x0010 Major
+      "Unknown <0x0020>", // 5, 0x0020
+      "Tank leakage reported", // 6, 0x0040
+      "Electronics: Solenoid voltage level", // 7, 0x0080
+      "Electronics: Manifold solenoid", // 8, 0x0100
+      "Electronics: Potentiometer drive", // 9, 0x0200
+      "Electronics: Information block corruption", // 10, 0x0400
+      "NTC sensor", // 11, 0x0800
+      "Electronics: Unknown <0x1000>", // 12, 0x1000
+      "Unknown <0x2000>", // 13, 0x2000
+      "Unknown <0x4000>", // 14, 0x4000
+      "Low thermopile voltage", // 15, 0x8000
+    };
+    // Sorted by flash count, more flashes, higher priority
+    static const int problem_flag_priority[16] = {
+    //  0  1   2  3  4   5  6  7  8  9 10 11  12  13  14  15
+      12, 1, 10, 9, 8, 15, 3, 7, 6, 5, 4, 2, 11, 14, 13, 0
+    };
+    const char *problem = "None";
+    if (item->offset + 4 < data.size()) {
+      return std::string("Error");
+    }
+    // Note: Modbus is big-endian
+    unsigned int problem_flags = data[item->offset + 1] | (data[item->offset] << 8);
+    int max_priority = -1;
+    for (int i = 0; i < 16; i++) {
+      if (problem_flags & (1 << i)) {
+        int priority = problem_flag_priority[i];
+        if (priority > max_priority) {
+          max_priority = priority;
+          problem = problem_flag_str[i];
+        }
+      }
+    }
+    return std::string(problem);
+  on_value:
+    then:
+      lambda: |-
+        if (x != "None") {
+          id(status).publish_state(x);
+        } else if (id(pot_state).state != "On") {
+          id(status).publish_state(id(pot_state).state);
+        } else {
+          id(status).publish_state(std::string(id(heating).state ? "Heating" : "Idle"));
+        }
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  id: last_major_problem
+  name: "Last Major Problem"
+  disabled_by_default: True
+  custom_command: [0x7f, 0x04, 0x04, 0x00, 0x00, 0x02]
+  lambda: |-
+    static const char *problem_flag_str[16] = {
+      "Turning off", // 0, 0x0001
+      "TCO exceeded", // 1, 0x0002 Major
+      "Electronics: Memory corruption or Potentiometer failure", // 2, 0x0004 Major
+      "Electronics: Solenoid voltage discharge", // 3, 0x0008 Major
+      "Electronics: Solenoid voltage drive", // 4, 0x0010 Major
+      "Unknown <0x0020>", // 5, 0x0020
+      "Tank leakage reported", // 6, 0x0040
+      "Electronics: Solenoid voltage level", // 7, 0x0080
+      "Electronics: Manifold solenoid", // 8, 0x0100
+      "Electronics: Potentiometer drive", // 9, 0x0200
+      "Electronics: Information block corruption", // 10, 0x0400
+      "NTC sensor", // 11, 0x0800
+      "Electronics: Unknown <0x1000>", // 12, 0x1000
+      "Unknown <0x2000>", // 13, 0x2000
+      "Unknown <0x4000>", // 14, 0x4000
+      "Low thermopile voltage", // 15, 0x8000
+    };
+    // Sorted by flash count, more flashes, higher priority
+    static const int problem_flag_priority[16] = {
+    //  0  1   2  3  4   5  6  7  8  9 10 11  12  13  14  15
+      12, 1, 10, 9, 8, 15, 3, 7, 6, 5, 4, 2, 11, 14, 13, 0
+    };
+    auto &self = id(last_major_problem);
+    unsigned int data0 = data[1] | (data[0] << 8) | (data[3] << 16) | (data[2] << 24);
+    unsigned int prev;
+    unsigned int curr;
+    if (self->custom_data[5] == 0x04) {
+      prev = data0;
+      curr = data[5] | (data[4] << 8) | (data[7] << 16) | (data[6] << 24);
+    } else if (!self->custom_data[3]) {
+      // Start of array, no prev
+      prev = 0;
+      curr = data0;
+    } else {
+      // End of array, current element is previously reported
+      prev = data0;
+      curr = 0xffffffff;
+    }
+
+    int offset = self->offset;
+    self->offset = 0;
+    if (prev == 0xffffffff) {
+        // Erasure occurred, move backwards
+        self->custom_data[5] = self->custom_data[3] ? 4 : 2;
+        self->custom_data[3] = max(0, self->custom_data[3] - 1);
+    } else if (curr != 0xffffffff) {
+        // New entry written, move forwards
+        if (!offset || curr != self->bitmask) {
+          // Make sure to read it twice, so we don't catch a partial write
+          self->offset = 1;
+          self->bitmask = curr;
+        } else {
+          if (self->custom_data[5] != 0x02)
+            self->custom_data[3] = min(0x1f, self->custom_data[3] + 1);
+          self->custom_data[5] = self->custom_data[3] == 0x1f ? 2 : 4;
+          unsigned int problem_flags = curr & 0xff;
+          unsigned int heat_cycle_count = curr >> 8;
+          const char *problem = "None";
+          int max_priority = -1;
+          for (int i = 0; i < 16; i++) {
+            if (problem_flags & (1 << i)) {
+              int priority = problem_flag_priority[i];
+              if (priority > max_priority) {
+                max_priority = priority;
+                problem = problem_flag_str[i];
+              }
+            }
+          }
+          return str_sprintf("[%04x] %s, heat cycle count %u", problem_flags, problem, heat_cycle_count);
+        }
+    }
+    return self->state;
+
+- platform: template
+  id: pot_state
+  name: "Control State"
+  disabled_by_default: True
+  on_value:
+    then:
+      lambda: |-
+        if (id(problem).state != "None") {
+          id(status).publish_state(id(problem).state);
+        } else if (x != "On") {
+          id(status).publish_state(x);
+        } else {
+          id(status).publish_state(std::string(id(heating).state ? "Heating" : "Idle"));
+        }
+- platform: template
+  id: status
+  name: "Status"
+
+binary_sensor:
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Heating"
+  disabled_by_default: True
+  id: heating
+  register_type: read
+  address: 0x0006
+  bitmask: 0x1
+  on_state:
+    then:
+      lambda: |-
+        if (id(problem).state != "None") {
+          id(status).publish_state(id(problem).state);
+        } else if (id(pot_state).state != "On") {
+          id(status).publish_state(id(pot_state).state);
+        } else {
+          id(status).publish_state(std::string(x ? "Heating" : "Idle"));
+        }
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Manifold Open"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0006
+  bitmask: 0x100
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Turning off"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "TCO Exceeded"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x2
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Potentiometer failure/Memory corruption"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x4
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Solenoid voltage discharge problem"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x8
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Solenoid voltage drive problem"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x10
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Tank leakage reported"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x40
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Solenoid voltage level problem"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x80
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Manifold solenoid problem"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x100
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Potentiometer drive problem"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x200
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Information block corrupted"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x400
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "NTC sensor problem"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x800
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Low thermopile voltage"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x8000
+
+number:
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device
+    address: 0x0100
+    register_type: holding
+    value_type: U_WORD
+    id: raw_setback_temp
+    skip_updates: 25
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device
+    address: 0x0101
+    register_type: holding
+    value_type: U_WORD
+    id: raw_temperature_hysteresis_override
+    skip_updates: 25
+  - platform: template
+    step: 0.1
+    optimistic: True
+    name: "Setback Temperature"
+    id: setback_temperature
+    device_class: temperature
+    unit_of_measurement: "°F"
+    mode: SLIDER
+    restore_value: True
+    initial_value: 155.0
+    min_value: 55.0
+    max_value: 155.0
+    on_value:
+      then:
+        number.set:
+          id: raw_setback_temp
+          value: !lambda |-
+            return id(enable_setback).state ? (int) round(x * 10.0) : 0x7fff;
+  - platform: template
+    name: "Temperature Hysteresis Override"
+    id: temperature_hysteresis_override
+    device_class: temperature
+    unit_of_measurement: "°F"
+    mode: SLIDER
+    min_value: 0.0
+    max_value: 50.0
+    step: 0.1
+    optimistic: True
+    restore_value: True
+    initial_value: 10.0
+    on_value:
+      then:
+        number.set:
+          id: raw_temperature_hysteresis_override
+          value: !lambda |-
+            return id(override_temperature_hysteresis).state ? (int) round(x * 10.0) : 0x7fff;
+
+switch:
+  - platform: modbus_controller
+    modbus_controller_id: modbus_device
+    address: 0x0102
+    register_type: holding
+    name: "Leak Detected"
+    bitmask: 0x0040
+  - platform: template
+    optimistic: True
+    name: "Enable Setback Temperature"
+    id: enable_setback
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_off:
+      then:
+        number.set:
+          id: raw_setback_temp
+          value: 0x7fff
+    on_turn_on:
+      then:
+        number.set:
+          id: raw_setback_temp
+          value: !lambda |-
+            return (int) round(id(setback_temperature).state * 10.0);
+  - platform: template
+    optimistic: True
+    name: "Override Temperature Hysteresis"
+    id: override_temperature_hysteresis
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_off:
+      then:
+        number.set:
+          id: raw_temperature_hysteresis_override
+          value: 0x7fff
+    on_turn_on:
+      then:
+        number.set:
+          id: raw_temperature_hysteresis_override
+          value: !lambda |-
+            return (int) round(id(temperature_hysteresis_override).state * 10.0);

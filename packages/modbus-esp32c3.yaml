@@ -1,0 +1,45 @@
+substitutions:
+  uart_dummy_tx: GPIO9
+  uart_tx: GPIO4
+  uart_rx: GPIO5
+  modbus_id: modbus1
+
+external_components:
+  - source: github://russdill/resideo@main
+    components: [ irda_uart ]
+
+uart:
+  - id: rx_uart
+    tx_pin: $uart_dummy_tx
+    rx_pin: $uart_rx
+    baud_rate: 2400
+    debug:
+      direction: TX
+      after:
+        timeout: 1ms
+      sequence:
+        # Forward all outbound traffic to a TX UART
+        - lambda: |-
+            if (!bytes.empty())
+              id(tx_uart).write_array(bytes.data(), bytes.size());
+
+  # ESP32C3 UARTs can either be in RX or TX mode, so for fully async, lets use two
+  - id: tx_uart
+    tx_pin: $uart_tx
+    baud_rate: 2400
+    debug:
+      direction: TX
+      after:
+        timeout: 1ms
+
+# Enables appropriate IRDA register settings
+irda_uart:
+  - uart_id: rx_uart
+    tx_en: false
+  - uart_id: tx_uart
+    tx_en: true
+    invert: true
+
+modbus:
+  uart_id: rx_uart
+  id: $modbus_id
