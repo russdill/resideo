@@ -626,6 +626,7 @@ switch:
     address: 0x0102
     register_type: holding
     name: "Leak Detected"
+    id: leak_detected
     bitmask: 0x0040
   - platform: template
     optimistic: True
