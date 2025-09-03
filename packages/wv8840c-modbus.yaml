@@ -62,6 +62,9 @@ sensor:
   value_type: U_WORD
   filters:
     - multiply: 0.1
+    - exponential_moving_average:
+        alpha: 0.05
+        send_every: 3
 - platform: modbus_controller
   modbus_controller_id: modbus_device
   name: "Ambient Temperature"
@@ -73,6 +76,9 @@ sensor:
   value_type: U_WORD
   filters:
     - multiply: 0.1
+    - exponential_moving_average:
+        alpha: 0.05
+        send_every: 3
 - platform: modbus_controller
   modbus_controller_id: modbus_device
   name: "Temperature Control Setting"
