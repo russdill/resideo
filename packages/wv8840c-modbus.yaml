@@ -96,6 +96,14 @@ sensor:
     }
 - platform: modbus_controller
   modbus_controller_id: modbus_device
+  name: "Unknown (0x0008)"
+  register_type: read
+  disabled_by_default: True
+  force_new_range: True
+  address: 0x0008
+  value_type: U_WORD
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
   name: "Solenoid Drive Voltage"
   register_type: read
   device_class: voltage
@@ -161,6 +169,13 @@ sensor:
   value_type: U_WORD
   filters:
     - multiply: 0.1
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Unknown (0x000e)"
+  register_type: read
+  disabled_by_default: True
+  address: 0x000e
+  value_type: U_WORD
 - platform: modbus_controller
   modbus_controller_id: modbus_device
   name: "Maximum Setback Temperature"
@@ -328,14 +343,14 @@ text_sensor:
       "Electronics: Information block corruption", // 10, 0x0400
       "NTC sensor", // 11, 0x0800
       "Electronics: Unknown <0x1000>", // 12, 0x1000
-      "Unknown <0x2000>", // 13, 0x2000
+      "Door temperature sensor", // 13, 0x2000
       "Unknown <0x4000>", // 14, 0x4000
       "Low thermopile voltage", // 15, 0x8000
     };
     // Sorted by flash count, more flashes, higher priority
     static const int problem_flag_priority[16] = {
-    //  0  1   2  3  4   5  6  7  8  9 10 11  12  13  14  15
-      12, 1, 10, 9, 8, 15, 3, 7, 6, 5, 4, 2, 11, 14, 13, 0
+    // 0  1   2  3  4   5  6  7  8  9 10 11  12  13  14  15
+      12, 1, 10, 9, 8, 15, 3, 7, 6, 5, 4, 2, 11, 13, 14, 0
     };
     const char *problem = "None";
     if (item->offset + 4 < data.size()) {
@@ -385,14 +400,14 @@ text_sensor:
       "Electronics: Information block corruption", // 10, 0x0400
       "NTC sensor", // 11, 0x0800
       "Electronics: Unknown <0x1000>", // 12, 0x1000
-      "Unknown <0x2000>", // 13, 0x2000
+      "Door temperature sensor", // 13, 0x2000
       "Unknown <0x4000>", // 14, 0x4000
       "Low thermopile voltage", // 15, 0x8000
     };
     // Sorted by flash count, more flashes, higher priority
     static const int problem_flag_priority[16] = {
-    //  0  1   2  3  4   5  6  7  8  9 10 11  12  13  14  15
-      12, 1, 10, 9, 8, 15, 3, 7, 6, 5, 4, 2, 11, 14, 13, 0
+    // 0  1   2  3  4   5  6  7  8  9 10 11  12  13  14  15
+      12, 1, 10, 9, 8, 15, 3, 7, 6, 5, 4, 2, 11, 13, 14, 0
     };
     auto &self = id(last_major_problem);
     unsigned int data0 = data[1] | (data[0] << 8) | (data[3] << 16) | (data[2] << 24);
@@ -573,6 +588,13 @@ binary_sensor:
   register_type: read
   address: 0x0007
   bitmask: 0x8000
+- platform: modbus_controller
+  modbus_controller_id: modbus_device
+  name: "Door temperature sensor failure"
+  disabled_by_default: True
+  register_type: read
+  address: 0x0007
+  bitmask: 0x2000
 
 number:
   - platform: modbus_controller
