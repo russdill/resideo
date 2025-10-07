@@ -1,8 +1,11 @@
 substitutions:
   uart_dummy_tx: GPIO9
-  uart_tx: GPIO4
+  uart_tx: GPIO6
   uart_rx: GPIO5
   modbus_id: modbus1
+  ntc_b: 3590
+  ntc_r: 10kOhm
+  ntc_t: 25°C
 
 esphome:
   name: wv8840c
@@ -35,3 +38,114 @@ packages:
     files:
       - packages/modbus-esp32c3.yaml
       - packages/wv8840c-modbus.yaml
+
+sensor:
+  - platform: adc
+    pin: GPIO2
+    id: vntc0
+    update_interval: never
+    attenuation: auto
+  - platform: adc
+    pin: GPIO3
+    id: vntc1
+    update_interval: never
+    attenuation: auto
+  - platform: adc
+    pin: GPIO4
+    id: vleak
+    update_interval: never
+    attenuation: auto
+  - platform: resistance
+    sensor: vntc0
+    configuration: DOWNSTREAM
+    resistor: 9.8kOhm
+    id: rntc0
+  - platform: resistance
+    sensor: vntc1
+    configuration: DOWNSTREAM
+    resistor: 9.8kOhm
+    id: rntc1
+  - platform: ntc
+    name: "Outlet Temperature"
+    sensor: rntc0
+    calibration:
+      b_constant: $ntc_b
+      reference_temperature: $ntc_t
+      reference_resistance: $ntc_r
+    filters:
+      - exponential_moving_average:
+          alpha: 0.05
+          send_every: 3
+  - platform: ntc
+    name: "Inlet Temperature"
+    sensor: rntc1
+    calibration:
+      b_constant: $ntc_b
+      reference_temperature: $ntc_t
+      reference_resistance: $ntc_r
+    filters:
+      - exponential_moving_average:
+          alpha: 0.05
+          send_every: 3
+
+  - platform: uptime
+    name: "Uptime"
+    entity_category: "diagnostic"
+
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: pulse_counter
+    id: flow_rate
+    pin: GPIO10
+    name: "Flow rate"
+    update_interval: 1s
+    unit_of_measurement: "L/min"
+    device_class: volume_flow_rate
+    # Flow formula F = (5Q – 3) ±10%
+    # * F is the pulse frequency in Hz
+    # * Q is the flow in l/min
+    # Input (x) is "pulses/min"
+    filters:
+    - lambda: 'return x > 0 ? (x / 300.0 + 0.6) : 0;'
+
+  - platform: integration
+    name: "Total volume"
+    sensor: flow_rate
+    time_unit: min
+    unit_of_measurement: "L"
+    device_class: water
+    restore: true
+    state_class: total_increasing
+
+binary_sensor:
+  - platform: analog_threshold
+    device_class: moisture
+    name: "Leak Sensor"
+    sensor_id: vleak
+    threshold: 2.8
+    filters:
+      - invert
+      - delayed_on: 500ms
+      - delayed_off: 1s
+    on_press:
+      switch.turn_on: leak_detected
+    on_release:
+      switch.turn_off: leak_detected
+
+switch:
+  - platform: gpio
+    pin: GPIO7
+    id: adc_vcc
+
+interval:
+  - interval: 1s
+    then:
+      - switch.turn_on: adc_vcc
+      - component.update: vleak
+      - delay: 50ms # Give enough time for the 1uF cap to charge
+      - component.update: vntc0
+      - component.update: vntc1
+      - switch.turn_off: adc_vcc
