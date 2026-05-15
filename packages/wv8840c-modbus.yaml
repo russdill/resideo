@@ -7,8 +7,8 @@ modbus_controller:
   modbus_id: $modbus_id
   update_interval: 10s
   setup_priority: -10
-  command_throttle: 500ms
-  max_cmd_retries: 2
+  command_throttle: 600ms
+  max_cmd_retries: 4
   on_offline:
     then:
       - lambda: |-
@@ -54,6 +54,7 @@ sensor:
 - platform: modbus_controller
   modbus_controller_id: modbus_device
   name: "Tank Temperature"
+  id: tank_temperature
   register_type: read
   device_class: temperature
   unit_of_measurement: "°F"
@@ -117,6 +118,7 @@ sensor:
 - platform: modbus_controller
   modbus_controller_id: modbus_device
   name: "Temperature Setting"
+  id: temperature_setting
   register_type: read
   device_class: temperature
   unit_of_measurement: "°F"
@@ -138,7 +140,7 @@ sensor:
   modbus_controller_id: modbus_device
   name: "Temperature Hysteresis"
   register_type: read
-  device_class: temperature
+  device_class: temperature_delta
   unit_of_measurement: "°F"
   accuracy_decimals: 1
   address: 0x000b
@@ -162,7 +164,7 @@ sensor:
   name: "Last Temperature Hysteresis"
   disabled_by_default: True
   register_type: read
-  device_class: temperature
+  device_class: temperature_delta
   unit_of_measurement: "°F"
   accuracy_decimals: 1
   address: 0x000d
@@ -206,7 +208,7 @@ sensor:
   modbus_controller_id: modbus_device
   name: "Temperature Hysteresis Max"
   register_type: read
-  device_class: temperature
+  device_class: temperature_delta
   unit_of_measurement: "°F"
   accuracy_decimals: 1
   disabled_by_default: True
@@ -219,7 +221,7 @@ sensor:
   modbus_controller_id: modbus_device
   name: "Temperature Hysteresis Min"
   register_type: read
-  device_class: temperature
+  device_class: temperature_delta
   unit_of_measurement: "°F"
   accuracy_decimals: 1
   disabled_by_default: True
@@ -632,7 +634,7 @@ number:
   - platform: template
     name: "Temperature Hysteresis Override"
     id: temperature_hysteresis_override
-    device_class: temperature
+    device_class: temperature_delta
     unit_of_measurement: "°F"
     mode: SLIDER
     min_value: 0.0
@@ -688,3 +690,22 @@ switch:
           id: raw_temperature_hysteresis_override
           value: !lambda |-
             return (int) round(id(temperature_hysteresis_override).state * 10.0);
+
+water_heater:
+  - platform: template
+    name: "Water Heater"
+    id: gas_water_heater
+    current_temperature: !lambda 'return (id(tank_temperature).state - 32.0) * (5.0/9.0);'
+    target_temperature: !lambda 'return (id(temperature_setting).state - 32.0) * (5.0/9.0);'
+    mode: !lambda 'return id(pot_state).state == "On" ? water_heater::WATER_HEATER_MODE_GAS : water_heater::WATER_HEATER_MODE_OFF;'
+    optimistic: true
+    visual:
+      min_temperature: 12.8
+      max_temperature: 68.3
+      target_temperature_step: 0.1
+    set_action:
+      - lambda: |-
+          ESP_LOGI("water_heater", "New target temperature: %.1f", id(gas_water_heater).get_target_temperature() );
+          auto call = id(setback_temperature).make_call();
+          call.set_value((id(gas_water_heater).get_target_temperature() * 9.0/5.0) + 32.0);
+          call.perform();
