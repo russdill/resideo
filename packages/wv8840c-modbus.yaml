@@ -7,7 +7,7 @@ modbus_controller:
   modbus_id: $modbus_id
   update_interval: 10s
   setup_priority: -10
-  command_throttle: 600ms
+  turnaround_time: 600ms
   max_cmd_retries: 4
   on_offline:
     then:
@@ -19,6 +19,11 @@ modbus_controller:
           id(heat_cycles).custom_pdu.data()[4] = 0x02;
           id(heat_cycles).offset = 0;
           id(status).publish_state("Offline");
+- id: modbus_device_slow
+    address: 0x7f
+    modbus_id: $modbus_id
+    update_interval: 15min
+    max_cmd_retries: 4
 
 sensor:
 - platform: modbus_controller
@@ -100,7 +105,7 @@ sensor:
   name: "Unknown (0x0008)"
   register_type: read
   disabled_by_default: True
-  force_new_range: True
+  reuse_previous_range: False
   address: 0x0008
   value_type: U_WORD
 - platform: modbus_controller
@@ -179,7 +184,7 @@ sensor:
   address: 0x000e
   value_type: U_WORD
 - platform: modbus_controller
-  modbus_controller_id: modbus_device
+  modbus_controller_id: modbus_device_slow
   name: "Maximum Setback Temperature"
   disabled_by_default: True
   register_type: read
@@ -187,12 +192,11 @@ sensor:
   unit_of_measurement: "°F"
   accuracy_decimals: 1
   address: 0x0304
-  skip_updates: 100
   value_type: U_WORD
   filters:
     - multiply: 0.1
 - platform: modbus_controller
-  modbus_controller_id: modbus_device
+  modbus_controller_id: modbus_device_slow
   name: "Minimum Setback Temperature"
   disabled_by_default: True
   register_type: read
@@ -200,12 +204,11 @@ sensor:
   unit_of_measurement: "°F"
   accuracy_decimals: 1
   address: 0x0305
-  skip_updates: 100
   value_type: U_WORD
   filters:
     - multiply: 0.1
 - platform: modbus_controller
-  modbus_controller_id: modbus_device
+  modbus_controller_id: modbus_device_slow
   name: "Temperature Hysteresis Max"
   register_type: read
   device_class: temperature_delta
@@ -213,12 +216,11 @@ sensor:
   accuracy_decimals: 1
   disabled_by_default: True
   address: 0x0306
-  skip_updates: 100
   value_type: U_WORD
   filters:
     - multiply: 0.1
 - platform: modbus_controller
-  modbus_controller_id: modbus_device
+  modbus_controller_id: modbus_device_slow
   name: "Temperature Hysteresis Min"
   register_type: read
   device_class: temperature_delta
@@ -226,7 +228,6 @@ sensor:
   accuracy_decimals: 1
   disabled_by_default: True
   address: 0x0307
-  skip_updates: 100
   value_type: U_WORD
   filters:
     - multiply: 0.1
@@ -235,7 +236,7 @@ sensor:
   id: heat_cycles
   name: "Heat Cycles"
   accuracy_decimals: 0
-  custom_command: [0x7f, 0x04, 0x04, 0x5e, 0x00, 0x02]
+  custom_pdu: [0x04, 0x04, 0x5e, 0x00, 0x02]
   lambda: |-
     auto &self = id(heat_cycles);
     unsigned int short_count = 0;
@@ -313,15 +314,14 @@ sensor:
 
 text_sensor:
 - platform: modbus_controller
-  modbus_controller_id: modbus_device
+  modbus_controller_id: modbus_device_slow
   name: "Model"
-  custom_command: [0x7f, 0x11]
+  custom_pdu: [0x11]
   lambda: |-
     if (data.size() < 1)
       return std::string("<unknown>");
     else
       return std::string((const char *)data.data(), data.size() - 1);
-  skip_updates: 100
 - platform: modbus_controller
   modbus_controller_id: modbus_device
   name: "Problem"
@@ -386,7 +386,7 @@ text_sensor:
   id: last_major_problem
   name: "Last Major Problem"
   disabled_by_default: True
-  custom_command: [0x7f, 0x04, 0x04, 0x00, 0x00, 0x02]
+  custom_pdu: [0x04, 0x04, 0x00, 0x00, 0x02]
   lambda: |-
     static const char *problem_flag_str[16] = {
       "Turning off", // 0, 0x0001
@@ -600,19 +600,17 @@ binary_sensor:
 
 number:
   - platform: modbus_controller
-    modbus_controller_id: modbus_device
+    modbus_controller_id: modbus_device_slow
     address: 0x0100
     register_type: holding
     value_type: U_WORD
     id: raw_setback_temp
-    skip_updates: 25
   - platform: modbus_controller
-    modbus_controller_id: modbus_device
+    modbus_controller_id: modbus_device_slow
     address: 0x0101
     register_type: holding
     value_type: U_WORD
     id: raw_temperature_hysteresis_override
-    skip_updates: 25
   - platform: template
     step: 0.1
     optimistic: True
