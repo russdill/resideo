@@ -6,7 +6,7 @@ substitutions:
 
 external_components:
   - source: github://russdill/resideo@main
-    components: [ irda_uart ]
+    components: [irda_uart]
 
 uart:
   - id: rx_uart
@@ -43,3 +43,4 @@ irda_uart:
 modbus:
   uart_id: rx_uart
   id: $modbus_id
+  turnaround_time: 600ms

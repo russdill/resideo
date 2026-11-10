@@ -109,7 +109,7 @@ sensor:
     # * Q is the flow in l/min
     # Input (x) is "pulses/min"
     filters:
-    - lambda: 'return x > 0 ? (x / 300.0 + 0.6) : 0;'
+      - lambda: 'return x > 0 ? (x / 300.0 + 0.6) : 0;'
 
   - platform: integration
     name: "Total volume"
@@ -145,7 +145,7 @@ interval:
     then:
       - switch.turn_on: adc_vcc
       - component.update: vleak
-      - delay: 50ms # Give enough time for the 1uF cap to charge
+      - delay: 50ms  # Give enough time for the 1uF cap to charge
       - component.update: vntc0
       - component.update: vntc1
       - switch.turn_off: adc_vcc
